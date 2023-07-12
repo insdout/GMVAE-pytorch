@@ -12,7 +12,23 @@ def qy_graph(x, k=10):
         qy_logit = Dense(h2, k, 'logit', reuse=reuse)
         qy = tf.nn.softmax(qy_logit, name='prob')
     return qy_logit, qy
+"""
 
+class Qy_x(nn.Module):
+    def __init__(self, encoder, enc_out_dim, k):
+        super(Qy_x, self).__init__()
+        self.encoder = encoder
+        self.qy_logit = nn.Linear(enc_out_dim, k)
+        self.qy = nn.Softmax()
+    
+    def forward(self, x):
+        h1 = self.encoder(x)
+        qy_logit = self.qy_logit(h1)
+        qy = self.qy(qy_logit)
+        return qy_logit, qy
+
+"""
+# vae subgraphs
 def qz_graph(x, y):
     reuse = len(tf.get_collection(tf.GraphKeys.VARIABLES, scope='qz')) > 0
     # -- q(z)
@@ -24,38 +40,35 @@ def qz_graph(x, y):
         zv = Dense(h2, 64, 'zv', tf.nn.softplus, reuse=reuse)
         z = GaussianSample(zm, zv, 'z')
     return z, zm, zv
-"""
+"""    
 
-class Qy_x(nn.Module):
-    def __init__(self):
-        super(Qy_x, self).__init__()
-    
-    def forward(self, x):
-        pass
-    
 class Qz_xy(nn.Module):
-    def __init__(self):
+    def __init__(self, encoder, enc_out_dim, y_dim, h2_dim, z_dim):
         super(Qz_xy, self).__init__()
+        self.encoder = encoder
+        self.h2 = nn.Sequential(
+            nn.Linear(enc_out_dim + y_dim, h2_dim), 
+            nn.ReLU()
+            )
+        self.zm = nn.Linear(h2_dim, z_dim)
+        self.zv = nn.Sequential(nn.Linear(h2_dim, z_dim), nn.Softplus())
     
-    def forward(self, x):
+    def gaussian_sample(self, zm, zv):
         pass
+    def forward(self, x, y):
+        h1 = self.encoder(x)
+        xy = torch.cat((h1, y), dim=1)
+        h2 = self.h2(xy)
+        zm = self.zm(h2)
+        zv = self.zv(h2)
+        z = self.gaussian_sample(zm, zv)
+        return z, zm, zv
 
 
 """
-===============================
-def px_graph(z, y):
-    reuse = len(tf.get_collection(tf.GraphKeys.VARIABLES, scope='px')) > 0
-    # -- p(z)
-    with tf.variable_scope('pz'):
-        zm = Dense(y, 64, 'zm', reuse=reuse)
-        zv = Dense(y, 64, 'zv', tf.nn.softplus, reuse=reuse)
-    # -- p(x)
-    with tf.variable_scope('px'):
-        h1 = Dense(z, 512, 'layer1', tf.nn.relu, reuse=reuse)
-        h2 = Dense(h1, 512, 'layer2', tf.nn.relu, reuse=reuse)
-        px_logit = Dense(h2, 784, 'logit', reuse=reuse)
-    return zm, zv, px_logit
-===============================
+link:
+https://github.com/jariasf/GMVAE/blob/master/pytorch/networks/Networks.py
+
 # Generative Network
 class GenerativeNet(nn.Module):
 
@@ -73,36 +86,70 @@ class GenerativeNet(nn.Module):
         torch.nn.Sigmoid()
     ])
 
-  # p(z|y)
-  def pzy(self, y):
-    y_mu = self.y_mu(y)
-    y_var = F.softplus(self.y_var(y))
-    return y_mu, y_var
-  
-  # p(x|z)
-  def pxz(self, z):
-    for layer in self.generative_pxz:
-      z = layer(z)
-    return z
-
-  def forward(self, z, y):
     # p(z|y)
-    y_mu, y_var = self.pzy(y)
+    ++++++++++++++++++++++++++++++++++++++++++
+    +     Очень странные имена переменных!   +
+    ++++++++++++++++++++++++++++++++++++++++++
+    def pzy(self, y):
+        y_mu = self.y_mu(y)
+        y_var = F.softplus(self.y_var(y))
+        return y_mu, y_var
     
     # p(x|z)
-    x_rec = self.pxz(z)
+    ++++++++++++++++++++++++++++++++++++++++++
+    +     Очень странные имена переменных!   +
+    ++++++++++++++++++++++++++++++++++++++++++
+    def pxz(self, z):
+        for layer in self.generative_pxz:
+        z = layer(z)
+        return z
 
-    output = {'y_mean': y_mu, 'y_var': y_var, 'x_rec': x_rec}
-    return output
+    def forward(self, z, y):
+        # p(z|y)
+        y_mu, y_var = self.pzy(y)
+        
+        # p(x|z)
+        x_rec = self.pxz(z)
+
+        output = {'y_mean': y_mu, 'y_var': y_var, 'x_rec': x_rec}
+        return output
 
 ===============================
+link:
+https://github.com/RuiShu/vae-clustering/blob/master/gmvae.py
+
+def px_graph(z, y):
+    reuse = len(tf.get_collection(tf.GraphKeys.VARIABLES, scope='px')) > 0
+    # -- p(z)
+    with tf.variable_scope('pz'):
+        zm = Dense(y, 64, 'zm', reuse=reuse)
+        zv = Dense(y, 64, 'zv', tf.nn.softplus, reuse=reuse)
+    # -- p(x)
+    with tf.variable_scope('px'):
+        h1 = Dense(z, 512, 'layer1', tf.nn.relu, reuse=reuse)
+        h2 = Dense(h1, 512, 'layer2', tf.nn.relu, reuse=reuse)
+        px_logit = Dense(h2, 784, 'logit', reuse=reuse)
+    return zm, zv, px_logit
+===============================
 """
-class Px(nn.Module):
-    def __init__(self):
-        super(Px, self).__init__()
+class Px_z(nn.Module):
+    def __init__(self, decoder):
+        super(Px_z, self).__init__()
+        self.decoder = decoder
+        self.zm = nn.Linear()
+        self.zv = nn.Sequential(
+            nn.Linear(),
+            nn.Softplus()
+            )
     
-    def forward(self, x):
-        pass
+    def forward(self, z, y):
+        # p(z)
+        zm = self.zm(y)
+        zv = self.zv(y)
+
+        # p(x)
+        x_hat = self.decoder(z)
+        return zm, zv, x_hat
     
     
     
