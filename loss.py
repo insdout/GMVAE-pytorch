@@ -3,6 +3,7 @@ from torch import nn
 import numpy as np
 import math
 import logging
+import torch.nn.functional as F
 
 
 """
@@ -88,14 +89,18 @@ class BCELogits:
     """
     ADD DOCSTRING!!!
     """
-    def __call__(self, x, px_logits, eps=0.):
+    def __init__(self, eps=0.):
+        self.eps = eps
+
+    def __call__(self, x, px_logits):
         batch_size = x.shape[0]
+        eps = self.eps
         if eps > 0.0:
             max_val = np.log(1.0 - eps) - np.log(eps)
             px_logits = torch.clamp(px_logits, -max_val, max_val)
-        loss = nn.BCEWithLogitsLoss(reduction="none")(px_logits, x)
+        #loss = nn.BCEWithLogitsLoss(reduction="none")(px_logits, x)
+        loss = -nn.BCELoss(reduction="none")(px_logits, x)
         loss = loss.view(batch_size, -1).sum(axis=1)
-        loss = loss.mean()
         return loss
 
 
@@ -122,9 +127,8 @@ class TotalLoss:
             - KL(qφ(y|x) || p(y)) + Eqφ(z|x,y) [log pθ(x|z)]
 
     """
-    def __init__(self, k, recon_loss=MSE(), eps=1e-8):
+    def __init__(self, k, recon_loss=MSE()):
         self.k = k
-        self.eps = eps
         self.recon_loss = recon_loss
 
     def negative_entropy_from_logit(self, qy, qy_logit):
@@ -140,55 +144,49 @@ class TotalLoss:
         nent = torch.sum(qy * torch.nn.LogSoftmax(1)(qy_logit), 1)
         return nent
 
-    def log_normal(self, x, mu, var, eps=1e-8, axis=-1):
+    def log_normal(self, x, mu, var, eps=0., axis=-1):
         """
         ADD DOCSTRING!!!
         """
         if eps > 0.0:
             var = torch.add(var, eps)
+        #return -0.5 * torch.sum(np.log(2 * math.pi) + torch.log(var) + torch.pow(x - mu, 2) / var, axis)
         return -0.5 * torch.sum(
-            np.log(2 * math.pi) + torch.log(var) + torch.pow(x - mu, 2) / var, axis)
+            np.log(2 * math.pi) + torch.log(var) + torch.square(x - mu) / var, axis)
 
     def _loss_per_class(self, x, x_hat, z, zm, zv, zm_prior, zv_prior):
-        loss_px_i = self.recon_loss(x, x_hat)
-        loss_qz_xy_i = self.log_normal(z, zm, zv) - self.log_normal(z, zm_prior, zv_prior)
-        loss_i = loss_px_i + loss_qz_xy_i - np.log(0.1)
-        return loss_i
+        loss_px_i = -self.recon_loss(x, x_hat)
+        print(f"px loss: {loss_px_i.sum().item()}")
+        loss_px_i += self.log_normal(z, zm, zv) - self.log_normal(z, zm_prior, zv_prior)
+        return loss_px_i - np.log(0.1)
+
 
     def __call__(self, x, output_dict):
         qy = output_dict["qy"]
         qy_logit = output_dict["qy_logit"]
-        x_hat = output_dict["x_hat"]
+        px = output_dict["px"]
         z = output_dict["z"]
         zm = output_dict["zm"]
         zv = output_dict["zv"]
         zm_prior = output_dict["zm_prior"]
         zv_prior = output_dict["zv_prior"]
-        logging.debug(f"Input shapes: qy shape: {tuple(qy.shape)} "
-                      f"qy_logit shape: {tuple(qy_logit.shape)}")
-        logging.debug(f"Input shapes: x shape: {tuple(x.shape)} "
-                      f"x_hat shape: {tuple(x_hat.shape)}")
-        logging.debug(f"Input shapes: z shape: {tuple(z.shape)} "
-                      f"zm shape: {tuple(zm.shape)} zv shape: {tuple(zv.shape)}")
         loss_qy = self.negative_entropy_from_logit(qy, qy_logit)
         losses_i = []
         for i in range(self.k):
             logging.debug(f"Class: {i}")
             losses_i.append(
                 self._loss_per_class(
-                    x, x_hat[i], z[i], zm[i], zv[i], zm_prior[i], zv_prior[i])
+                    x, px[i], z[i], zm[i], zv[i], zm_prior[i], zv_prior[i])
                 )
-            logging.debug(f"loss_i | values: {losses_i[-1]}")
-        logging.debug(f"Final Loss | losses_i: {losses_i}")
-        logging.debug(f"Final Loss | qy: {qy}")
-        logging.debug(f"Final Loss | losses_i sum: {torch.stack(losses_i).sum(0)}")
-        logging.debug(f"Final Loss | qy*losses_i sum: {torch.stack([qy[:, i] * losses_i[i] for i in range(self.k)]).sum(0)}")
-        logging.debug(f"Final Loss | loss_qy: {loss_qy}")
+            print(f"i: {i} my loss: {losses_i[-1]}")
+        print([torch.sum(qy[:, i] * losses_i[i]).item() for i in range(self.k)])
         loss = torch.stack([loss_qy] + [qy[:, i] * losses_i[i] for i in range(self.k)]).sum(0)
+        print(loss)
         # Alternative way to calculate loss:
         # loss_a = loss_qy +
         # torch.sum(torch.mul(torch.stack(losses_i), torch.transpose(qy, 1, 0)), dim=0)
-        return loss
+        out_dict = {"nent": loss_qy.sum(), "optimization_loss": loss.sum()}
+        return out_dict
 
 
 if __name__ == "__main__":
@@ -204,7 +202,7 @@ if __name__ == "__main__":
     x = x.reshape((batch_size, -1))
     # x_hat = torch.rand((k, batch_size, input_dim**2))
     x_hat = 2*torch.stack([x.reshape(batch_size, -1) for i in range(k)]) - 1
-    px = torch.log(x_hat)
+    px = x_hat
     qy_logit = 2*torch.rand((batch_size, k))
     qy = torch.nn.functional.softmax(qy_logit, dim=-1)
     logging.debug(f"initial qy: {qy}")
@@ -221,8 +219,8 @@ if __name__ == "__main__":
             "zv_prior": zv_prior,
             "qy_logit": qy_logit,
             "qy": qy,
-            "px": px,
-            "x_hat": x_hat}
+            "px": px
+            }
 
     loss = TotalLoss(k=k, recon_loss=MSE())
     res = loss(x=x.reshape(batch_size, -1), output_dict=out)
