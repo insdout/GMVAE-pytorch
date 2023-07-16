@@ -1,18 +1,18 @@
 import torch
 from torch import nn
 
-
 """
-# vae subgraphs
-def qy_graph(x, k=10):
-    reuse = len(tf.get_collection(tf.GraphKeys.VARIABLES, scope='qy')) > 0
-    # -- q(y)
-    with tf.variable_scope('qy'):
-        h1 = Dense(x, 512, 'layer1', tf.nn.relu, reuse=reuse)
-        h2 = Dense(h1, 512, 'layer2', tf.nn.relu, reuse=reuse)
-        qy_logit = Dense(h2, k, 'logit', reuse=reuse)
-        qy = tf.nn.softmax(qy_logit, name='prob')
-    return qy_logit, qy
+====================================================================================
+Used repositories:
+link:
+https://github.com/sghalebikesabi/gmm-vae-clustering-pytorch
+
+link:
+https://github.com/RuiShu/vae-clustering/blob/master/gmvae.py
+
+link:
+https://github.com/insdout/MDS-Thesis-RULPrediction/blob/main/models/tshae_models.py
+====================================================================================
 """
 
 
@@ -28,22 +28,6 @@ class Qy_x(nn.Module):
         qy_logit = self.qy_logit(h1)
         qy = self.qy(qy_logit)
         return qy_logit, qy
-
-
-"""
-# vae subgraphs
-def qz_graph(x, y):
-    reuse = len(tf.get_collection(tf.GraphKeys.VARIABLES, scope='qz')) > 0
-    # -- q(z)
-    with tf.variable_scope('qz'):
-        xy = tf.concat(1, (x, y), name='xy/concat')
-        h1 = Dense(xy, 512, 'layer1', tf.nn.relu, reuse=reuse)
-        h2 = Dense(h1, 512, 'layer2', tf.nn.relu, reuse=reuse)
-        z_mean = Dense(h2, 64, 'z_mean', reuse=reuse)
-        zlogvar = Dense(h2, 64, 'zlogvar', tf.nn.softplus, reuse=reuse)
-        z = GaussianSample(z_mean, zlogvar, 'z')
-    return z, z_mean, zlogvar
-"""
 
 
 class Qz_xy(nn.Module):
@@ -74,75 +58,6 @@ class Qz_xy(nn.Module):
         zlogvar = self.zlogvar(h2)
         z = self.gaussian_sample(z_mean, zlogvar)
         return z, z_mean, zlogvar
-
-
-"""
-link:
-https://github.com/jariasf/GMVAE/blob/master/pytorch/networks/Networks.py
-
-# Generative Network
-class GenerativeNet(nn.Module):
-
-    # p(z|y)
-    self.y_mu = nn.Linear(y_dim, latent_dim)
-    self.y_var = nn.Linear(y_dim, latent_dim)
-
-    # p(x|z)
-    self.generative_pxz = torch.nn.ModuleList([
-        nn.Linear(latent_dim, 512),
-        nn.ReLU(),
-        nn.Linear(512, 512),
-        nn.ReLU(),
-        nn.Linear(512, x_dim),
-        torch.nn.Sigmoid()
-    ])
-
-    # p(z|y)
-    ++++++++++++++++++++++++++++++++++++++++++
-    +     Очень странные имена переменных!   +
-    ++++++++++++++++++++++++++++++++++++++++++
-    def pzy(self, y):
-        y_mu = self.y_mu(y)
-        y_var = F.softplus(self.y_var(y))
-        return y_mu, y_var
-
-    # p(x|z)
-    ++++++++++++++++++++++++++++++++++++++++++
-    +     Очень странные имена переменных!   +
-    ++++++++++++++++++++++++++++++++++++++++++
-    def pxz(self, z):
-        for layer in self.generative_pxz:
-        z = layer(z)
-        return z
-
-    def forward(self, z, y):
-        # p(z|y)
-        y_mu, y_var = self.pzy(y)
-
-        # p(x|z)
-        x_rec = self.pxz(z)
-
-        output = {'y_mean': y_mu, 'y_var': y_var, 'x_rec': x_rec}
-        return output
-
-===============================
-link:
-https://github.com/RuiShu/vae-clustering/blob/master/gmvae.py
-
-def px_graph(z, y):
-    reuse = len(tf.get_collection(tf.GraphKeys.VARIABLES, scope='px')) > 0
-    # -- p(z)
-    with tf.variable_scope('pz'):
-        z_mean = Dense(y, 64, 'z_mean', reuse=reuse)
-        zlogvar = Dense(y, 64, 'zlogvar', tf.nn.softplus, reuse=reuse)
-    # -- p(x)
-    with tf.variable_scope('px'):
-        h1 = Dense(z, 512, 'layer1', tf.nn.relu, reuse=reuse)
-        h2 = Dense(h1, 512, 'layer2', tf.nn.relu, reuse=reuse)
-        px_logit = Dense(h2, 784, 'logit', reuse=reuse)
-    return z_mean, zlogvar, px_logit
-===============================
-"""
 
 
 class Px_z(nn.Module):
