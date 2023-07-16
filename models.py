@@ -1,33 +1,6 @@
 import torch
 from torch import nn
 
-"""
-link:
-https://github.com/sghalebikesabi/gmm-vae-clustering-pytorch/blob/master/gmmvae.py
-
-def forward(self, x):
-        xb = x
-        y_ = torch.zeros([x.shape[0], 10])
-        qy_logit, qy = self.qy_graph(xb)
-        z, zm, zv, zm_prior, zv_prior, px = [[None] * 10 for i in range(6)]
-        for i in range(10):
-            y = y_ + torch.eye(10)[i]
-            z[i], zm[i], zv[i] = self.qz_graph(xb, y)
-            zm_prior[i], zv_prior[i], px[i] = self.decoder(z[i], y)
-
-        latent_samples = {'z': z}
-        variational_params = {
-            'zm': zm,
-            'zv': zv,
-            'zm_prior': zm_prior,
-            'zv_prior': zv_prior,
-            'qy_logit': qy_logit,
-            'qy': qy,
-        }
-
-        return px, variational_params, latent_samples
-"""
-
 
 class GMVAE(nn.Module):
     def __init__(self, k, Qy_x_net, Qz_xy_net, Px_z_net):

@@ -187,4 +187,4 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     trainer = Trainer(model, optimizer, criterion, train_loader, test_loader, device, transform_fn=flatten_mnist)
-    trainer.train(10)
+    trainer.train(10git)
