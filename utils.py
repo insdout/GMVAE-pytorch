@@ -37,3 +37,4 @@ def get_model(k, encoder_type, input_size, hidden_size, latent_dim,
         recon_loss = BCELogits(eps=eps)
     loss = TotalLoss(k, recon_loss)
     return model, loss
+

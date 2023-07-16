@@ -90,6 +90,7 @@ class GMVAE(nn.Module):
             }
         return out_train, out_infer
 
+
 if __name__ == "__main__":
     from utils import get_model
 
@@ -100,8 +101,8 @@ if __name__ == "__main__":
     latent_dim = 32
 
     model, criterion = get_model(k, encoder_type, input_size, hidden_size, latent_dim,
-                recon_loss_type="BCE", return_probs=False, eps=0,
-                encoder_kwargs={}, decoder_kwargs={})
+                                 recon_loss_type="BCE", return_probs=False, eps=0,
+                                 encoder_kwargs={}, decoder_kwargs={})
     model.train()
     data = torch.randn((5, 28*28))
     out_train, out_infer = model(data)
