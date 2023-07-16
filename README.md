@@ -1,6 +1,3 @@
-# GMVAE-pytorch
-Gaussian Mixture Variational Encoder
-
 # Gaussian Mixture Variational Autoencoder (GMVAE)
 
 This repository contains an implementation of the Gaussian Mixture Variational Autoencoder (GMVAE) based on the paper "A Note on Deep Variational Models for Unsupervised Clustering" by James Brofos, Rui Shu, and Curtis Langlotz. The GMVAE is a modified version of the M2 model proposed by D. P. Kingma et al. in their paper "Semi-Supervised Learning with Deep Generative Models."
