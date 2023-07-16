@@ -12,11 +12,10 @@ input_size = 28*28
 hidden_size = 128
 latent_dim = 32
 
-model, loss_cls = get_model(k, encoder_type, input_size, hidden_size, latent_dim,
-                             recon_loss_type="MSE", return_probs=False, eps=1e-8,
+model, criterion = get_model(k, encoder_type, input_size, hidden_size, latent_dim,
+                             recon_loss_type="BCE", return_probs=True, eps=1e-8,
                              encoder_kwargs={}, decoder_kwargs={})
 
-criterion = loss_function
 
 # Set device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,16 +52,17 @@ def train(model, dataloader, criterion, optimizer):
         optimizer.zero_grad()
         out_train, out_infer = model(images)
         loss = criterion(images, out_train)
-        loss.backward()
+        loss['optimization_loss'].backward()
         optimizer.step()
 
-        running_loss += loss.item()
+        running_loss += loss['optimization_loss'].item()
         #print(f"loss batch {loss.item()}")
 
 
-    train_loss = running_loss / len(dataloader)
+    train_loss = running_loss / len(dataloader.dataset)
     return train_loss, out_infer
 
+import numpy as np 
 
 # Evaluation loop
 def evaluate(model, dataloader, criterion):
@@ -79,23 +79,27 @@ def evaluate(model, dataloader, criterion):
             out_train, out_infer = model(images)
             loss = criterion(images, out_train)
 
-            running_loss += loss.item()
+            running_loss += loss['optimization_loss'].item()
             
     
-    test_loss = running_loss / len(dataloader)
+    test_loss = running_loss / len(dataloader.dataset)
     return test_loss, out_infer
 
 # Train the model
-num_epochs = 20
+num_epochs = 10
 test_loss = 0
 for epoch in range(num_epochs):
-    train_loss, out_infer= train(model, train_loader, criterion, optimizer)
-    #test_loss, out_infer = evaluate(model, test_loader, criterion)
+    train_loss, out_infer = train(model, train_loader, criterion, optimizer)
+    test_loss, out_infer = evaluate(model, test_loader, criterion)
 
     print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}")
 
 ims = out_infer["x_hat"].detach().cpu().numpy()
+y =  out_infer["y"].detach().cpu().numpy()
 for i in range(10):
     im = ims[i]
-    plt.imshow(im.reshape(1, 28, 28).squeeze(0), cmap='gray')
+    lab = y[i]
+    fig, ax = plt.subplots(1)
+    ax.imshow(im.reshape(1, 28, 28).squeeze(0), cmap='gray')
+    ax.set_title(f"{lab}")
     plt.show()
