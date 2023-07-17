@@ -1,6 +1,6 @@
 # Gaussian Mixture Variational Autoencoder (GMVAE)
 
-This repository contains an implementation of the Gaussian Mixture Variational Autoencoder (GMVAE) based on the paper "A Note on Deep Variational Models for Unsupervised Clustering" by James Brofos, Rui Shu, and Curtis Langlotz. The GMVAE is a modified version of the M2 model proposed by D. P. Kingma et al. in their paper "Semi-Supervised Learning with Deep Generative Models."
+This repository contains an implementation of the Gaussian Mixture Variational Autoencoder (GMVAE) based on the paper "A Note on Deep Variational Models for Unsupervised Clustering" by James Brofos, Rui Shu, and Curtis Langlotz and a modified version of the M2 model proposed by D. P. Kingma et al. in their paper "Semi-Supervised Learning with Deep Generative Models."
 
 $$ \log p_\theta(x) \geq \mathbb{E}{q_\phi (y,z|x)}\left[ \log p_\theta(x|y, z) + \log p_\theta(y) + \log p(z) - \log q_\phi(y, z|x) \right]$$
 
