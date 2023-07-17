@@ -59,7 +59,8 @@ class GMVAE(nn.Module):
         out_infer = {
             "y": y_hat,
             "z": z_hat,
-            "x_hat": x_hat
+            "x_hat": x_hat,
+            "qy": qy
             }
         return out_train, out_infer
 
