@@ -13,25 +13,63 @@ def flatten_mnist(tensor):
 
 
 class Trainer:
-    def __init__(self, model, optimizer, criterion, train_loader, test_loader, device, transform_fn=flatten_mnist):
+    def __init__(self, model, optimizer, criterion, train_loader,
+                 test_loader, device, track_ids=True, tracked_ids={},
+                 n=2, transform_fn=flatten_mnist):
+        """
+        Trainer class for training and evaluating a PyTorch model.
+
+        Args:
+            model (nn.Module): The PyTorch model to train and evaluate.
+            optimizer (torch.optim.Optimizer): The optimizer for updating model parameters.
+            criterion (callable): The loss function to compute the training loss.
+            train_loader (torch.utils.data.DataLoader): DataLoader for the training dataset.
+            test_loader (torch.utils.data.DataLoader): DataLoader for the test dataset.
+            device (str): Device to run the computations on (e.g., "cuda" or "cpu").
+            track_ids (bool): Flag indicating whether to track specific sample IDs during training (default: True).
+            tracked_ids (set): Set of sample IDs to track during training (default: empty set).
+            n (int): Number of sample IDs to track during training (default: 2).
+            transform_fn (callable): Optional function to transform the input data (default: flatten_mnist).
+        """
         self.optimizer = optimizer
         self.criterion = criterion
+
         self.train_loader = train_loader
         self.test_loader = test_loader
+        self.transform_fn = transform_fn
+
         self.history = defaultdict(list)
+        self.track_ids = track_ids
+        self.tracked_ids = tracked_ids
+        self.n = n
+        self.ids_history = defaultdict(dict)
+
         self.current_epoch = 0
         self.device = torch.device("cuda" if (torch.cuda.is_available() and device == "cuda") else "cpu")
-        self.transform_fn = transform_fn
         self.model = model.to(self.device)
 
     def train(self, epochs):
+        """
+        Train the model for the specified number of epochs.
+
+        Args:
+            epochs (int): Number of epochs to train the model.
+        """
         for epoch in range(epochs):
             self.train_epoch()
             self.evaluate()
+
+            # Track history for ids over epochs:
+            if self.track_ids:
+                if len(self.tracked_ids) == 0:
+                    self.tracked_ids = self.get_n_ids_per_class(self.n)
+                self.infer_tracked_ids()
+        
             train_loss = self.history["train_loss"][-1]
             test_loss = self.history["test_loss"][-1]
             test_acc = self.history["test_accuracy"][-1]
-            print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f} Test Acc: {test_acc:.4f}")
+            print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, "
+                  f"Test Loss: {test_loss:.4f} Test Acc: {test_acc:.4f}")
 
     def get_accuracy(self, y_true, y_pred):
         """
@@ -128,6 +166,42 @@ class Trainer:
         self.history["testn_cond_entropy"].append(cond_entropy)
         return test_loss, out_infer
 
+    def get_n_ids_per_class(self, n):
+
+        targets = self.test_loader.dataset.targets
+        unique_values = targets.unique(return_counts=False)
+
+        random_indices = []
+
+        for value in unique_values:
+            indices = torch.where(targets == value)[0]
+            random_index = torch.randperm(len(indices))[:n]
+            random_indices.extend(indices[random_index])
+
+        #random_indices = torch.tensor(random_indices)
+        random_indices = np.array(random_indices)
+        return random_indices
+
+    def infer_tracked_ids(self):
+        model = self.model.eval()
+        ids = self.tracked_ids
+        dataset = self.test_loader.dataset
+        device = self.device
+
+        with torch.no_grad():
+            data, labels = dataset.data[ids], dataset.targets[ids]
+            data = data.to(device)
+            if self.transform_fn:
+                data = self.transform_fn(data)/255.0
+            labels = labels.to(device)
+
+            _, out_infer = model(data)
+
+            for ind, id in enumerate(ids):
+                for key in out_infer.keys():
+                    temp_array = out_infer[key][ind].detach().cpu().numpy()
+                    self.ids_history[id].setdefault(key, []).append(temp_array)
+
     def plot_images(self, imgs, lbls, save_folder):
         num_rows = 4
         num_cols = 10
@@ -154,7 +228,9 @@ class Trainer:
 
         plt.close(fig)
 
+
 if __name__ == "__main__":
+
     k = 10
     encoder_type = "FC"
     input_size = 28*28
@@ -165,17 +241,14 @@ if __name__ == "__main__":
                                 recon_loss_type="BCE", return_probs=True, eps=1e-8,
                                 encoder_kwargs={}, decoder_kwargs={})
 
-
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
     # Set up data loaders
     # Define the transformation
     transform = transforms.ToTensor()
     train_dataset = datasets.MNIST(root='data', train=True, transform=transform, download=True)
     test_dataset = datasets.MNIST(root='data', train=False, transform=transform)
-
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=2048, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2048, shuffle=False)
@@ -187,4 +260,9 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     trainer = Trainer(model, optimizer, criterion, train_loader, test_loader, device, transform_fn=flatten_mnist)
-    trainer.train(10git)
+    trainer.train(1)
+    print(trainer.ids_history.keys())
+    ids = trainer.tracked_ids
+    print(ids)
+    print(trainer.ids_history[ids[0]].keys())
+    print(trainer.ids_history[ids[0]]["qy"])
