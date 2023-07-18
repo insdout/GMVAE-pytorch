@@ -3,6 +3,7 @@ from torch import nn
 import numpy as np
 import math
 import logging
+import torch.nn.functional as F
 
 
 class MSE:
@@ -112,6 +113,47 @@ class TotalLoss:
         # torch.sum(torch.mul(torch.stack(losses_i), torch.transpose(qy, 1, 0)), dim=0)
         out_dict = {"cond_entropy": loss_qy.sum(), "total_loss": loss.sum()}
         return out_dict
+
+
+class Loss2:
+    def __call__(self, x, output_dict):
+        qy = output_dict["qy"]
+        qy_logit = output_dict["qy_logit"]
+        px_logit = output_dict["px"]
+        z = output_dict["z"]
+        zm = output_dict["zm"]
+        zv = output_dict["zv"]
+        zm_prior = output_dict["zm_prior"]
+        zv_prior = output_dict["zv_prior"]
+        data = x
+        nent = torch.sum(qy * torch.nn.LogSoftmax(1)(qy_logit), 1)
+
+        losses = [None]*10
+        for i in range(10):
+            losses[i] = self.labeled_loss(data, px_logit[i], z[i], zm[i], torch.exp(zv[i]), zm_prior[i], torch.exp(zv_prior[i]))
+
+        loss = torch.stack([nent] + [qy[:, i] * losses[i] for i in range(10)]).sum(0)
+
+        out_dict = {"cond_entropy": nent.sum(), "total_loss": loss.sum()}
+        return out_dict
+
+    def labeled_loss(self, x, px_logit, z, zm, zv, zm_prior, zv_prior):
+        xy_loss = -self.log_bernoulli_with_logits(x, px_logit)
+        xy_loss += self.log_normal(z, zm, zv) - self.log_normal(z, zm_prior, zv_prior)
+        return xy_loss - np.log(0.1)
+
+    def log_bernoulli_with_logits(self, x, logits, eps=0.0, axis=-1):
+        if eps > 0.0:
+            max_val = np.log(1.0 - eps) - np.log(eps)
+            logits = torch.clamp(logits, -max_val, max_val)
+        return -torch.sum(
+            F.binary_cross_entropy(logits, x, reduction="none"), axis)
+
+    def log_normal(self, x, mu, var, eps=0.0, axis=-1):
+        if eps > 0.0:
+            var = torch.add(var, eps, name='clipped_var')
+        return -0.5 * torch.sum(
+            np.log(2 * math.pi) + torch.log(var) + torch.square(x - mu) / var, axis)
 
 
 if __name__ == "__main__":

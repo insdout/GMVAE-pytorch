@@ -36,7 +36,9 @@ class Qz_xy(nn.Module):
         self.encoder = encoder
         self.h2 = nn.Sequential(
             nn.Linear(enc_out_dim + k, hidden_size),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
             )
         self.z_mean = nn.Linear(hidden_size, latent_dim)
         self.zlogvar = nn.Sequential(nn.Linear(hidden_size, latent_dim), nn.Softplus())
@@ -110,6 +112,8 @@ class DecoderFC(nn.Module):
 
         self.dec_block = nn.Sequential(
             nn.Linear(latent_dim, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, input_size),
            )
