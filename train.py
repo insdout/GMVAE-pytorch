@@ -7,6 +7,8 @@ from collections import defaultdict
 import numpy as np
 import os
 import json
+from tqdm import tqdm
+
 
 
 def flatten_mnist(tensor):
@@ -16,7 +18,7 @@ def flatten_mnist(tensor):
 class Trainer:
     def __init__(self, model, optimizer, criterion, train_loader,
                  test_loader, device, track_ids=True, tracked_ids={},
-                 n=1, transform_fn=flatten_mnist):
+                 n=1, binarize_x=False, transform_fn=flatten_mnist):
         """
         Trainer class for training and evaluating a PyTorch model.
 
@@ -38,6 +40,7 @@ class Trainer:
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.transform_fn = transform_fn
+        self.binarize_x = binarize_x
 
         self.history = defaultdict(list)
         self.track_ids = track_ids
@@ -71,9 +74,10 @@ class Trainer:
 
             train_loss = self.history["train_loss"][-1]
             test_loss = self.history["test_loss"][-1]
+            train_acc = self.history["train_accuracy"][-1]
             test_acc = self.history["test_accuracy"][-1]
             print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, "
-                  f"Test Loss: {test_loss:.4f} Test Acc: {test_acc:.4f}")
+                  f"Test Loss: {test_loss:.4f} Train Acc: {train_acc:.4f} Test Acc: {test_acc:.4f}")
         # After trainig actions:
         self.dump_to_json(self.history, "history.json", indent=4)
         self.dump_to_json(self.ids_history, "ids_history.json")
@@ -108,10 +112,17 @@ class Trainer:
         pred_labels = []
         true_labels = []
 
-        for data, labels in dataloader:
+        for data, labels in tqdm(dataloader):
             data = data.to(device)
+
             if self.transform_fn:
                 data = self.transform_fn(data)
+            
+            if self.binarize_x:
+                batch = data.shape[0]
+                thresholds = torch.rand((batch, 1))
+                data = torch.where(data > thresholds, 1.0, 0.0)
+                
             labels = labels.to(device)
 
             optimizer.zero_grad()
@@ -168,7 +179,7 @@ class Trainer:
         cond_entropy = running_entropy / len(dataloader.dataset)
         self.history["test_loss"].append(test_loss)
         self.history["test_accuracy"].append(self.get_accuracy(true_labels, pred_labels))
-        self.history["testn_cond_entropy"].append(cond_entropy)
+        self.history["test_cond_entropy"].append(cond_entropy)
         return test_loss, out_infer
 
     def _get_n_ids_per_class(self, n):
@@ -257,10 +268,10 @@ if __name__ == "__main__":
     encoder_type = "FC"
     input_size = 28*28
     hidden_size = 512
-    latent_dim = 64
+    latent_dim = 10 #64
 
     model, criterion = get_model(k, encoder_type, input_size, hidden_size, latent_dim,
-                                recon_loss_type="BCE", return_probs=True, eps=1e-8, model_name="GMVAE2",
+                                recon_loss_type="BCE", return_probs=True, eps=1e-8, model_name="GMVAE", loss_name="Loss",
                                 encoder_kwargs={}, decoder_kwargs={})
 
     # Set device
@@ -272,16 +283,16 @@ if __name__ == "__main__":
     train_dataset = datasets.MNIST(root='data', train=True, transform=transform, download=True)
     test_dataset = datasets.MNIST(root='data', train=False, transform=transform)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=512, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2048, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=8)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2048, shuffle=False, num_workers=8)
 
     # Move model to device
     model.to(device)
-
+    print(f"Training on: {device}")
     # Define loss function and optimizer
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-    trainer = Trainer(model, optimizer, criterion, train_loader, test_loader, device, transform_fn=flatten_mnist)
-    trainer.train(3)
+    trainer = Trainer(model, optimizer, criterion, train_loader, test_loader, device, transform_fn=flatten_mnist, binarize_x=True)
+    trainer.train(200)
     print(trainer.ids_history.keys())
   
