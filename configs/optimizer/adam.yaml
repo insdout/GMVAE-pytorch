@@ -1,0 +1,3 @@
+_target_: "torch.optim.adam.Adam"
+lr: 0.001
+weight_decay: 0

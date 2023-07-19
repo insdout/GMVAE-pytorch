@@ -1,0 +1,9 @@
+train_loader:
+  batch_size: 1024
+  shuffle: True
+  num_workers: 8
+
+test_loader:
+  batch_size: 2048
+  shuffle: False
+  num_workers: 8

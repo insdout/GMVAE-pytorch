@@ -1,0 +1,12 @@
+k: 10
+encoder_type: "FC"
+input_size: 784
+hidden_size: 512
+latent_dim: 10
+recon_loss_type: "BCE"
+return_probs: True
+eps: 0
+model_name: "GMVAE2"
+loss_name: "Loss"
+encoder_kwargs: {}
+decoder_kwargs: {}

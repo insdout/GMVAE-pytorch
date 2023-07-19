@@ -1,0 +1,8 @@
+init_params:
+  device: "cuda"
+  track_ids: True
+  tracked_ids: {}
+  n: 1
+  binarize_x: True
+
+epochs: 200

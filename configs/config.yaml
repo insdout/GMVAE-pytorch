@@ -1,0 +1,6 @@
+defaults:
+  - dataloaders: mnist
+  - get_model: gmvae
+  - optimizer: adam
+  - trainer: trainer
+  - _self_
