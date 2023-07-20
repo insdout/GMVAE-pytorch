@@ -6,7 +6,7 @@ $$ \log p_\theta(x) \geq \mathbb{E}{q_\phi (y,z|x)}\left[ \log p_\theta(x|y, z) 
 
 <h2 align="center"> P(Y|X) over epochs during unsupervised training:</h2>
 <p align="center">
-<img alt="probability over epochs" src="./outputs/train.gif" width="600">
+<img alt="probability over epochs" src="./outputs/train.gif" width="500">
 </p>
 
 ## Repository Structure
