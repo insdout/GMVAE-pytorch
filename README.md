@@ -4,7 +4,7 @@ This repository contains an implementation of the Gaussian Mixture Variational A
 
 $$ \log p_\theta(x) \geq \mathbb{E}{q_\phi (y,z|x)}\left[ \log p_\theta(x|y, z) + \log p_\theta(y) + \log p(z) - \log q_\phi(y, z|x) \right]$$
 
-<h1 align="center"> P(Y|X) over epochs during unsupervised training:d</h1>
+<h2 align="center"> P(Y|X) over epochs during unsupervised training:</h2>
 <p align="center">
 <img alt="probability over epochs" src="./outputs/train.gif" width="600">
 </p>
