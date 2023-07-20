@@ -1,16 +1,16 @@
 from models import GMVAE, GMVAE2
-from loss import TotalLoss, MSE, BCELogits, Loss2
+from loss import TotalLoss, MSE, BCELogits
 from modules import Qy_x, Qz_xy, Px_z
 from modules import EncoderFC, DecoderFC, EncoderLSTM, DecoderLSTM
 import json
 import numpy as np
 import torch
 import matplotlib
-matplotlib.use('agg')
 from matplotlib.animation import FuncAnimation, PillowWriter
 import matplotlib.pyplot as plt
 import os
 import logging
+matplotlib.use('agg')
 
 
 log = logging.getLogger(__name__)
@@ -79,11 +79,12 @@ def get_model(k, encoder_type, input_size, hidden_size, latent_dim,
         model = GMVAE(k=k, Qy_x_net=Qy_x_net, Qz_xy_net=Qz_xy_net, Px_z_net=Px_z_net)
         model.apply(init_weights)
         log.info(f"Model {model_name} created.")
-
+    
     elif model_name == "GMVAE2":
         model = GMVAE2(input_size, k, latent_dim, hidden_size)
         model.apply(init_weights)
         log.info(f"Model {model_name} created.")
+    
     else:
         raise ValueError(f"Model {model_name} is not implemented.")
 
@@ -93,9 +94,6 @@ def get_model(k, encoder_type, input_size, hidden_size, latent_dim,
         else:
             recon_loss = BCELogits(eps=eps)
         loss = TotalLoss(k, recon_loss)
-        log.info(f"Loss {loss_name} created.")
-    elif loss_name == "Loss2":
-        loss = Loss2()
         log.info(f"Loss {loss_name} created.")
     else:
         raise ValueError(f"Loss {loss_name} is not implemented.")
@@ -161,7 +159,7 @@ def plot_id_history(history, output_dir):
 
     ani = FuncAnimation(fig, animate_diff, fargs=[history],  interval=250,
                         blit=False, repeat=True, frames=history_len)
-    
+
     img_dir = os.path.join(output_dir, 'images')
     os.makedirs(img_dir, exist_ok=True)
     gif_path = os.path.join(img_dir, "gen_over_epochs.gif")

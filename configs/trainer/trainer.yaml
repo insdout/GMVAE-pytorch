@@ -5,4 +5,4 @@ init_params:
   n: 1
   binarize_x: True
 
-epochs: 200
+epochs: 100

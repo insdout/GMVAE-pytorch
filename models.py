@@ -4,7 +4,16 @@ import torch.nn.functional as F
 
 
 class GMVAE(nn.Module):
+
     def __init__(self, k, Qy_x_net, Qz_xy_net, Px_z_net):
+        """_summary_
+
+        Args:
+            k (_type_): _description_
+            Qy_x_net (_type_): _description_
+            Qz_xy_net (_type_): _description_
+            Px_z_net (_type_): _description_
+        """
         super(GMVAE, self).__init__()
         self.k = k
         self.qy_x = Qy_x_net
@@ -12,6 +21,14 @@ class GMVAE(nn.Module):
         self.px_z = Px_z_net
 
     def infer(self, x):
+        """_summary_
+
+        Args:
+            x (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         k = self.k
         batch_size = x.shape[0]
         qy_logit, qy = self.qy_x(x)
@@ -39,7 +56,7 @@ class GMVAE(nn.Module):
             y = y_ + torch.eye(k).to(x.device)[i]
             z[i], zm[i], zv[i] = self.qz_xy(x, y)
             zm_prior[i], zv_prior[i], px[i] = self.px_z(z[i], y)
-        
+
         # Inference for x_hat:
         with torch.no_grad():
             y_hat = torch.argmax(qy, dim=-1)
@@ -173,8 +190,8 @@ class GMVAE2(torch.nn.Module):
             "qy": qy
             }
         return out_train, out_infer
-
-
+    
+    
 if __name__ == "__main__":
     from utils import get_model
 
@@ -196,4 +213,3 @@ if __name__ == "__main__":
     print(f"infer x_hat shape: {inf_x_hat.shape}")
 
     print(criterion(data, out_train))
-
