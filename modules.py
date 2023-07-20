@@ -17,12 +17,9 @@ https://github.com/insdout/MDS-Thesis-RULPrediction/blob/main/models/tshae_model
 
 
 class Qy_x(nn.Module):
-    def __init__(self, enc_out_dim, k):
+    def __init__(self, encoder, enc_out_dim, k):
         super(Qy_x, self).__init__()
-        self.h1 = nn.Sequential(
-            nn.Linear(enc_out_dim ,enc_out_dim), 
-            nn.ReLU()
-            )
+        self.h1 = encoder
         self.qy_logit = nn.Linear(enc_out_dim, k)
         self.qy = nn.Softmax(dim=1)
 
@@ -34,12 +31,9 @@ class Qy_x(nn.Module):
 
 
 class Qz_xy(nn.Module):
-    def __init__(self, k, enc_out_dim, hidden_size, latent_dim):
+    def __init__(self, k, encoder, enc_out_dim, hidden_size, latent_dim):
         super(Qz_xy, self).__init__()
-        self.h1 = nn.Sequential(
-            nn.Linear(enc_out_dim, enc_out_dim),
-            nn.ReLU()
-            )
+        self.h1 = encoder
         self.h2 = nn.Sequential(
             nn.Linear(enc_out_dim + k, hidden_size),
             nn.ReLU(),
@@ -48,7 +42,6 @@ class Qz_xy(nn.Module):
             )
         self.z_mean = nn.Linear(hidden_size, latent_dim)
         self.zlogvar = nn.Linear(hidden_size, latent_dim)
-                                   
 
     def gaussian_sample(self, z_mean, z_logvar):
         z_std = torch.sqrt(torch.exp(z_logvar))
@@ -76,9 +69,7 @@ class Px_z(nn.Module):
         self.decoder_hidden = self.decoder.hidden_size
         self.latent_dim = self.decoder.latent_dim
         self.z_mean = nn.Linear(k, self.latent_dim)
-        self.zlogvar = nn.Sequential(
-            nn.Linear(k, self.latent_dim)
-            )
+        self.zlogvar = nn.Linear(k, self.latent_dim)
 
     def forward(self, z, y):
         # p(z|y)
@@ -91,16 +82,19 @@ class Px_z(nn.Module):
 
 
 class EncoderFC(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, dropout):
         super(EncoderFC, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.p = dropout
 
         self.enc_block = nn.Sequential(
             nn.Linear(input_size, hidden_size),
             nn.ReLU(),
+            nn.Dropout(p=self.p),
             nn.Linear(hidden_size, hidden_size),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.Dropout(p=self.p) 
             )
 
     def forward(self, x):
