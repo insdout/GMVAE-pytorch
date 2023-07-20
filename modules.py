@@ -17,31 +17,38 @@ https://github.com/insdout/MDS-Thesis-RULPrediction/blob/main/models/tshae_model
 
 
 class Qy_x(nn.Module):
-    def __init__(self, encoder, enc_out_dim, k):
+    def __init__(self, enc_out_dim, k):
         super(Qy_x, self).__init__()
-        self.encoder = encoder
+        self.h1 = nn.Sequential(
+            nn.Linear(enc_out_dim ,enc_out_dim), 
+            nn.ReLU()
+            )
         self.qy_logit = nn.Linear(enc_out_dim, k)
         self.qy = nn.Softmax(dim=1)
 
     def forward(self, x):
-        h1 = self.encoder(x)
+        h1 = self.h1(x)
         qy_logit = self.qy_logit(h1)
         qy = self.qy(qy_logit)
         return qy_logit, qy
 
 
 class Qz_xy(nn.Module):
-    def __init__(self, encoder, k, enc_out_dim, hidden_size, latent_dim):
+    def __init__(self, k, enc_out_dim, hidden_size, latent_dim):
         super(Qz_xy, self).__init__()
-        self.encoder = encoder
+        self.h1 = nn.Sequential(
+            nn.Linear(enc_out_dim, enc_out_dim),
+            nn.ReLU()
+            )
         self.h2 = nn.Sequential(
             nn.Linear(enc_out_dim + k, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
+            nn.ReLU()
             )
         self.z_mean = nn.Linear(hidden_size, latent_dim)
-        self.zlogvar = nn.Sequential(nn.Linear(hidden_size, latent_dim), nn.Softplus())
+        self.zlogvar = nn.Linear(hidden_size, latent_dim)
+                                   
 
     def gaussian_sample(self, z_mean, z_logvar):
         z_std = torch.sqrt(torch.exp(z_logvar))
@@ -52,7 +59,7 @@ class Qz_xy(nn.Module):
         return z
 
     def forward(self, x, y):
-        h1 = self.encoder(x)    # dim: Batch, hidden_size
+        h1 = self.h1(x)    # dim: Batch, hidden_size
         xy = torch.cat((h1, y), dim=1)
         h2 = self.h2(xy)
         # q(z|x, y)
@@ -70,8 +77,7 @@ class Px_z(nn.Module):
         self.latent_dim = self.decoder.latent_dim
         self.z_mean = nn.Linear(k, self.latent_dim)
         self.zlogvar = nn.Sequential(
-            nn.Linear(k, self.latent_dim),
-            nn.Softplus()
+            nn.Linear(k, self.latent_dim)
             )
 
     def forward(self, z, y):

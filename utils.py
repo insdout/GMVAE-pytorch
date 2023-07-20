@@ -1,4 +1,4 @@
-from models import GMVAE, GMVAE2
+from models import GMVAE
 from loss import TotalLoss, MSE, BCELogits
 from modules import Qy_x, Qz_xy, Px_z
 from modules import EncoderFC, DecoderFC, EncoderLSTM, DecoderLSTM
@@ -73,18 +73,19 @@ def get_model(k, encoder_type, input_size, hidden_size, latent_dim,
         else:
             raise ValueError(f"Encoder {encoder_type} is not implemented.")
 
-        Qy_x_net = Qy_x(encoder=encoder, k=k, enc_out_dim=hidden_size)
-        Qz_xy_net = Qz_xy(encoder=encoder, enc_out_dim=hidden_size, k=k, hidden_size=hidden_size, latent_dim=latent_dim)
+        Qy_x_net = Qy_x(k=k, enc_out_dim=hidden_size)
+        Qz_xy_net = Qz_xy(enc_out_dim=hidden_size, k=k, hidden_size=hidden_size, latent_dim=latent_dim)
         Px_z_net = Px_z(decoder=decoder, k=k)
-        model = GMVAE(k=k, Qy_x_net=Qy_x_net, Qz_xy_net=Qz_xy_net, Px_z_net=Px_z_net)
+        model = GMVAE(k=k, encoder=encoder, Qy_x_net=Qy_x_net, Qz_xy_net=Qz_xy_net, Px_z_net=Px_z_net)
         model.apply(init_weights)
         log.info(f"Model {model_name} created.")
-    
-    elif model_name == "GMVAE2":
-        model = GMVAE2(input_size, k, latent_dim, hidden_size)
-        model.apply(init_weights)
-        log.info(f"Model {model_name} created.")
-    
+
+        """
+        elif model_name == "GMVAE2":
+            model = GMVAE2(input_size, k, latent_dim, hidden_size)
+            model.apply(init_weights)
+            log.info(f"Model {model_name} created.")
+        """
     else:
         raise ValueError(f"Model {model_name} is not implemented.")
 
