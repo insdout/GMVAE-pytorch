@@ -43,7 +43,7 @@ class GMVAE(nn.Module):
             "y": y_hat,
             "z": z_hat,
             "x_hat": x_hat
-            }
+        }
         return out_infer
 
     def forward(self, x):
@@ -74,14 +74,14 @@ class GMVAE(nn.Module):
             "qy_logit": qy_logit,
             "qy": qy,
             "px": px
-            }
+        }
 
         out_infer = {
             "y": y_hat,
             "z": z_hat,
             "x_hat": x_hat,
             "qy": qy
-            }
+        }
         return out_train, out_infer
 
 
@@ -104,7 +104,8 @@ class GMVAE2(torch.nn.Module):
         self.fc_qyl_qy = torch.nn.Softmax(1)
 
         # q(z|x, y)
-        self.fc_xy_h = torch.nn.Linear(self.input_dim + self.r_cat_dim, self.h_dim)
+        self.fc_xy_h = torch.nn.Linear(
+            self.input_dim + self.r_cat_dim, self.h_dim)
         self.fc_hxy_h = torch.nn.Linear(self.h_dim, self.h_dim)
         self.fc_h_z = torch.nn.Linear(self.h_dim, self.z_dim*2)
 
@@ -138,7 +139,7 @@ class GMVAE2(torch.nn.Module):
         z = z_mu_post + eps*z_std_post
 
         return z, z_mu_post, z_logvar_post
-  
+
     def decoder(self, z, y):
 
         # p(z)
@@ -181,16 +182,16 @@ class GMVAE2(torch.nn.Module):
             "qy_logit": qy_logit,
             "qy": qy,
             "px": px
-            }
+        }
 
         out_infer = {
             "y": y_hat,
             "z": z_hat,
             "x_hat": x_hat,
             "qy": qy
-            }
+        }
         return out_train, out_infer
-  
+
 
 if __name__ == "__main__":
     from utils import get_model
@@ -201,9 +202,19 @@ if __name__ == "__main__":
     hidden_size = 128
     latent_dim = 32
 
-    model, criterion = get_model(k, encoder_type, input_size, hidden_size, latent_dim,
-                                 recon_loss_type="BCE", return_probs=False, eps=0,
-                                 encoder_kwargs={}, decoder_kwargs={})
+    model, criterion = get_model(
+        k,
+        encoder_type,
+        input_size,
+        hidden_size,
+        latent_dim,
+        recon_loss_type="BCE",
+        return_probs=False,
+        eps=0,
+        encoder_kwargs={},
+        decoder_kwargs={}
+    )
+
     model.train()
     data = torch.randn((5, 28*28))
     out_train, out_infer = model(data)
