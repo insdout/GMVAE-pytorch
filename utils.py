@@ -1,7 +1,7 @@
 from models import GMVAE, GMVAE2
 from loss import TotalLoss, MSE, BCELogits
 from modules import Qy_x, Qz_xy, Px_z
-from modules import EncoderFC, DecoderFC, EncoderLSTM, DecoderLSTM
+from modules import EncoderFC, DecoderFC
 import json
 import numpy as np
 import torch
