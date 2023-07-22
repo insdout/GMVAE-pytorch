@@ -2,16 +2,11 @@ import torch
 from utils import get_model, NumpyEncoder
 import torch.optim as optim
 from torchvision import datasets, transforms
+import matplotlib.pyplot as plt
 from collections import defaultdict
 import numpy as np
-import json
-from tqdm import tqdm
-import logging
-import sys
 import os
-
-
-log = logging.getLogger(__name__)
+import json
 
 
 def flatten_mnist(tensor):
@@ -20,8 +15,8 @@ def flatten_mnist(tensor):
 
 class Trainer:
     def __init__(self, model, optimizer, criterion, train_loader,
-                 test_loader, device, path, track_ids=True, tracked_ids={},
-                 n=1, binarize_x=False, transform_fn=flatten_mnist):
+                 test_loader, device, track_ids=True, tracked_ids={},
+                 n=1, transform_fn=flatten_mnist):
         """
         Trainer class for training and evaluating a PyTorch model.
 
@@ -43,7 +38,6 @@ class Trainer:
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.transform_fn = transform_fn
-        self.binarize_x = binarize_x
 
         self.history = defaultdict(list)
         self.track_ids = track_ids
@@ -54,8 +48,6 @@ class Trainer:
         self.current_epoch = 0
         self.device = torch.device("cuda" if (torch.cuda.is_available() and device == "cuda") else "cpu")
         self.model = model.to(self.device)
-        
-        self.path = path
 
     def train(self, epochs):
         """
@@ -64,7 +56,6 @@ class Trainer:
         Args:
             epochs (int): Number of epochs to train the model.
         """
-        log.info(f"Training on {self.device}")
         if self.track_ids:
             if len(self.tracked_ids) == 0:
                 self.tracked_ids = self._get_n_ids_per_class(self.n)
@@ -80,17 +71,12 @@ class Trainer:
 
             train_loss = self.history["train_loss"][-1]
             test_loss = self.history["test_loss"][-1]
-            train_acc = self.history["train_accuracy"][-1]
             test_acc = self.history["test_accuracy"][-1]
-
-            log.info(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, "
-                     f"Test Loss: {test_loss:.4f} Train Acc: {train_acc:.4f} Test Acc: {test_acc:.4f}")
+            print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, "
+                  f"Test Loss: {test_loss:.4f} Test Acc: {test_acc:.4f}")
         # After trainig actions:
-        os.makedirs(self.path, exist_ok=True)
-        history_path = os.path.join(self.path, "history.json")
-        self.dump_to_json(self.history, history_path, indent=4)
-        ids_history_path = os.path.join(self.path, "ids_history.json")
-        self.dump_to_json(self.ids_history, ids_history_path)
+        self.dump_to_json(self.history, "history.json", indent=4)
+        self.dump_to_json(self.ids_history, "ids_history.json")
 
     def get_accuracy(self, y_true, y_pred):
         """
@@ -122,17 +108,10 @@ class Trainer:
         pred_labels = []
         true_labels = []
 
-        for data, labels in tqdm(dataloader):
+        for data, labels in dataloader:
             data = data.to(device)
-
             if self.transform_fn:
                 data = self.transform_fn(data)
-
-            if self.binarize_x:
-                batch = data.shape[0]
-                thresholds = torch.rand((batch, 1)).to(data.device)
-                data = torch.where(data > thresholds, 1.0, 0.0)
-
             labels = labels.to(device)
 
             optimizer.zero_grad()
@@ -151,7 +130,7 @@ class Trainer:
         cond_entropy = running_entropy / len(dataloader.dataset)
         self.history["train_loss"].append(train_loss)
         self.history["train_accuracy"].append(self.get_accuracy(true_labels, pred_labels))
-        self.history["train_cond_entropy"].append(-cond_entropy)
+        self.history["train_cond_entropy"].append(cond_entropy)
         self.current_epoch += 1
         return train_loss, out_infer
 
@@ -189,7 +168,7 @@ class Trainer:
         cond_entropy = running_entropy / len(dataloader.dataset)
         self.history["test_loss"].append(test_loss)
         self.history["test_accuracy"].append(self.get_accuracy(true_labels, pred_labels))
-        self.history["test_cond_entropy"].append(-cond_entropy)
+        self.history["testn_cond_entropy"].append(cond_entropy)
         return test_loss, out_infer
 
     def _get_n_ids_per_class(self, n):
@@ -216,14 +195,14 @@ class Trainer:
         return random_indices
 
     def _get_tracked_x_true(self):
-        """
+        """_summary_
         """
         for true_id in self.tracked_ids:
             true_id = int(true_id)
             self.ids_history[true_id]["x_true"] = self.test_loader.dataset.data[true_id].cpu().numpy()
 
     def _infer_tracked_ids(self):
-        """_summary_
+        """
         """
         model = self.model.eval()
         ids = self.tracked_ids
@@ -245,41 +224,64 @@ class Trainer:
                     temp_array = out_infer[key][rel_id].detach().cpu().numpy()
                     self.ids_history[true_id].setdefault(key, []).append(temp_array)
 
+
     def dump_to_json(self, data, file_path, indent=None):
+        """_summary_
+
+        Args:
+            data (_type_): _description_
+            file_path (_type_): _description_
+            indent (_type_, optional): _description_. Defaults to None.
+        """
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=indent, cls=NumpyEncoder)
-        log.info(f"JSON data saved to: {file_path}")
+        print(f"Data saved to: {file_path}")
+
+    def plot_images(self, imgs, lbls, save_folder):
+        """_summary_
+
+        Args:
+            imgs (_type_): _description_
+            lbls (_type_): _description_
+            save_folder (_type_): _description_
+        """
+        num_rows = 4
+        num_cols = 10
+
+        fig, axes = plt.subplots(num_rows, num_cols, figsize=(15, 8))
+        fig.tight_layout()
+
+        for i in range(num_rows):
+            for j in range(num_cols):
+                index = i * num_cols + j
+                axes[i][j].imshow(imgs[index], cmap='gray')
+                axes[i][j].axis('off')
+                axes[i][j].set_title(lbls[index])
+
+        # Create the save folder if it doesn't exist
+        os.makedirs(save_folder, exist_ok=True)
+
+        # Save the plot as images
+        for i in range(num_rows):
+            for j in range(num_cols):
+                index = i * num_cols + j
+                save_path = os.path.join(save_folder, f'image_{index}.png')
+                plt.savefig(save_path)
+
+        plt.close(fig)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-
-    # Create a custom log message format
-    formatter = logging.Formatter("[%(asctime)s][%(name)s][%(levelname)s] - %(message)s")
-
-    # Get the existing logger (root logger in this case)
-    logger = logging.getLogger()
-
-    # Create a new handler and set the custom formatter
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-
-    # Remove existing handlers to avoid duplicate logging (optional)
-    for old_handler in logger.handlers:
-        logger.removeHandler(old_handler)
-
-    # Add the new handler to the logger
-    logger.addHandler(handler)
 
     k = 10
     encoder_type = "FC"
     input_size = 28*28
     hidden_size = 512
-    latent_dim = 10     # 64
+    latent_dim = 64
 
     model, criterion = get_model(k, encoder_type, input_size, hidden_size, latent_dim,
-                                 recon_loss_type="BCE", return_probs=True, eps=1e-8, model_name="GMVAE", loss_name="Loss",
-                                 encoder_kwargs={}, decoder_kwargs={})
+                                recon_loss_type="BCE", return_probs=True, eps=1e-8, model_name="GMVAE2",
+                                encoder_kwargs={}, decoder_kwargs={})
 
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -290,14 +292,16 @@ if __name__ == "__main__":
     train_dataset = datasets.MNIST(root='data', train=True, transform=transform, download=True)
     test_dataset = datasets.MNIST(root='data', train=False, transform=transform)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=8)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2048, shuffle=False, num_workers=8)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=2048, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2048, shuffle=False)
 
     # Move model to device
     model.to(device)
+
     # Define loss function and optimizer
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-    trainer = Trainer(model, optimizer, criterion, train_loader, test_loader, device, transform_fn=flatten_mnist, binarize_x=True)
-    trainer.train(2)
+    trainer = Trainer(model, optimizer, criterion, train_loader, test_loader, device, transform_fn=flatten_mnist)
+    trainer.train(3)
     print(trainer.ids_history.keys())
+  
