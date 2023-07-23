@@ -104,7 +104,7 @@ class EncoderFC(nn.Module):
 
 class DecoderFC(nn.Module):
     def __init__(self, input_size, hidden_size,
-                 latent_dim, return_probs=False):
+                 latent_dim, return_probs=True):
         """
         Decoder Module.
         """

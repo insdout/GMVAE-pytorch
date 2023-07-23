@@ -28,7 +28,7 @@ def init_weights(m):
 
 
 def get_model(k, encoder_type, input_size, hidden_size, latent_dim,
-              recon_loss_type="MSE", return_probs=False, eps=0,
+              recon_loss_type="MSE", eps=0,
               encoder_kwargs={}, decoder_kwargs={}, model_name="GMVAE2", loss_name="Loss"):
     """_summary_
 
@@ -57,9 +57,8 @@ def get_model(k, encoder_type, input_size, hidden_size, latent_dim,
 
     if model_name == "GMVAE":
         if encoder_type == "FC":
-            encoder_qy = EncoderFC(input_size=input_size, hidden_size=hidden_size, **encoder_kwargs)
-            encoder_qz = EncoderFC(input_size=input_size, hidden_size=hidden_size, **encoder_kwargs)
-            decoder = DecoderFC(input_size=input_size, hidden_size=hidden_size, latent_dim=latent_dim, return_probs=return_probs)
+            encoder = EncoderFC(input_size=input_size, hidden_size=hidden_size, **encoder_kwargs)
+            decoder = DecoderFC(input_size=input_size, hidden_size=hidden_size, latent_dim=latent_dim, **decoder_kwargs)
         elif encoder_type == "LSTM":
             encoder = EncoderLSTM(
                 input_size=input_size,
@@ -75,13 +74,12 @@ def get_model(k, encoder_type, input_size, hidden_size, latent_dim,
         else:
             raise ValueError(f"Encoder {encoder_type} is not implemented.")
 
-        Qy_x_net = Qy_x(k=k, encoder=encoder_qy, enc_out_dim=hidden_size)
-        Qz_xy_net = Qz_xy(encoder=encoder_qz, enc_out_dim=hidden_size, k=k, hidden_size=hidden_size, latent_dim=latent_dim)
+        Qy_x_net = Qy_x(k=k, encoder=encoder, enc_out_dim=hidden_size)
+        Qz_xy_net = Qz_xy(encoder=encoder, enc_out_dim=hidden_size, k=k, hidden_size=hidden_size, latent_dim=latent_dim)
         Px_z_net = Px_z(decoder=decoder, k=k)
         model = GMVAE(k=k, Qy_x_net=Qy_x_net, Qz_xy_net=Qz_xy_net, Px_z_net=Px_z_net)
         model.apply(init_weights)
         log.info(f"Model {model_name} created.")
-
         
     elif model_name == "GMVAE2":
         model = GMVAE2(input_size, k, latent_dim, hidden_size)
