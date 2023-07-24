@@ -7,7 +7,16 @@ import logging
 
 class MSE:
     """
-    ADD DOCSTRING!!!
+    Mean Squared Error (MSE) loss function.
+    
+    Calculates the mean squared error between the input and the target.
+
+    Args:
+        x (torch.Tensor): Input tensor.
+        x_hat (torch.Tensor): Target tensor.
+
+    Returns:
+        torch.Tensor: Computed loss tensor.
     """
     def __call__(self, x, x_hat):
         batch_size = x.shape[0]
@@ -18,7 +27,16 @@ class MSE:
 
 class BCELogits:
     """
-    ADD DOCSTRING!!!
+    Binary Cross Entropy (BCE) loss function with logits.
+
+    Calculates the binary cross entropy between the input and the target logits.
+
+    Args:
+        x (torch.Tensor): Input tensor.
+        px_logits (torch.Tensor): Target tensor representing the logits.
+
+    Returns:
+        torch.Tensor: Computed loss tensor.
     """
     def __init__(self, eps=0.0):
         self.eps = eps
@@ -79,7 +97,23 @@ class TotalLoss:
 
     def log_normal(self, x, mu, var, eps=0., axis=-1):
         """
-        ADD DOCSTRING!!!
+        Calculate the element-wise log probability of a normal distribution.
+
+        The function computes the logarithm of the probability density function of a
+        normal distribution given the input tensor `x`, mean tensor `mu`, and variance
+        tensor `var`. It is assumed that `x`, `mu`, and `var` have the same shape.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+            mu (torch.Tensor): Mean tensor of the normal distribution.
+            var (torch.Tensor): Variance tensor of the normal distribution.
+            eps (float, optional): A small value added to the variance to avoid numerical instability.
+                Defaults to 0.0.
+            axis (int, optional): The axis along which the log probabilities are summed.
+                Defaults to -1.
+
+        Returns:
+            torch.Tensor: The computed log probability of the normal distribution.
         """
         if eps > 0.0:
             var = torch.add(var, eps)

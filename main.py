@@ -15,7 +15,7 @@ def main(config):
     """_summary_
 
     Args:
-        config (_type_): _description_
+        config (dict): Configuration dictionary containing experiment parameters.
     """
     # current hydra output folder
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()

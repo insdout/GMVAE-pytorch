@@ -27,15 +27,23 @@ class Trainer:
 
         Args:
             model (nn.Module): The PyTorch model to train and _evaluate.
-            optimizer (torch.optim.Optimizer): The optimizer for updating model parameters.
-            criterion (callable): The loss function to compute the training loss.
-            train_loader (torch.utils.data.DataLoader): DataLoader for the training dataset.
-            test_loader (torch.utils.data.DataLoader): DataLoader for the test dataset.
-            device (str): Device to run the computations on (e.g., "cuda" or "cpu").
-            track_ids (bool): Flag indicating whether to track specific sample IDs during training (default: True).
-            tracked_ids (set): Set of sample IDs to track during training (default: empty set).
-            n (int): Number of sample IDs to track during training (default: 2).
-            transform_fn (callable): Optional function to transform the input data (default: flatten_mnist).
+            optimizer (torch.optim.Optimizer): The optimizer for updating
+                model parameters.
+            criterion (callable): The loss function to compute
+                the training loss.
+            train_loader (torch.utils.data.DataLoader): DataLoader for
+                the training dataset.
+            test_loader (torch.utils.data.DataLoader): DataLoader for
+                the test dataset.
+            device (str): Device to run the computations on ("cuda" or "cpu").
+            track_ids (bool): Flag indicating whether to track specific sample
+                IDs during training (default: True).
+            tracked_ids (set): Set of sample IDs to track during training
+                (default: empty set).
+            n (int): Number of sample IDs to track during training
+                (default: 2).
+            transform_fn (callable): Optional function to transform the input
+            data (default: flatten_mnist).
         """
         self.optimizer = optimizer
         self.criterion = criterion
@@ -84,7 +92,8 @@ class Trainer:
             test_acc = self.history["test_accuracy"][-1]
 
             log.info(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.4f}, "
-                     f"Test Loss: {test_loss:.4f} Train Acc: {train_acc:.4f} Test Acc: {test_acc:.4f}")
+                     f"Test Loss: {test_loss:.4f} Train Acc: {train_acc:.4f} "
+                     f"Test Acc: {test_acc:.4f}")
         # After trainig actions:
         os.makedirs(self.path, exist_ok=True)
         history_path = os.path.join(self.path, "history.json")
@@ -157,7 +166,10 @@ class Trainer:
 
     def _evaluate(self):
         """
-        Training loop
+        Evaluate the model on the test dataset.
+
+        Returns:
+            tuple: A tuple containing the test loss and the inference results.
         """
         model = self.model.eval()
         criterion = self.criterion
@@ -193,13 +205,14 @@ class Trainer:
         return test_loss, out_infer
 
     def _get_n_ids_per_class(self, n):
-        """_summary_
+        """
+        Get n samples per class for evaluation.
 
         Args:
-            n (_type_): _description_
+            n (int): Number of samples per class.
 
         Returns:
-            _type_: _description_
+            numpy.ndarray: Array of random indices for each class.
         """
         targets = self.test_loader.dataset.targets
         unique_values = targets.unique(return_counts=False)
@@ -217,13 +230,15 @@ class Trainer:
 
     def _get_tracked_x_true(self):
         """
+        Get the true images for the tracked IDs and store them in the history.
         """
         for true_id in self.tracked_ids:
             true_id = int(true_id)
             self.ids_history[true_id]["x_true"] = self.test_loader.dataset.data[true_id].cpu().numpy()
 
     def _infer_tracked_ids(self):
-        """_summary_
+        """
+        Infer the latent variables for the tracked IDs and store them in the history.
         """
         model = self.model.eval()
         ids = self.tracked_ids
@@ -246,6 +261,14 @@ class Trainer:
                     self.ids_history[true_id].setdefault(key, []).append(temp_array)
 
     def dump_to_json(self, data, file_path, indent=None):
+        """
+        Dump data to a JSON file.
+
+        Args:
+            data: Data to be saved as JSON.
+            file_path (str): File path where the JSON data will be saved.
+            indent (int, optional): Number of spaces for indentation. Defaults to None.
+        """
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=indent, cls=NumpyEncoder)
         log.info(f"JSON data saved to: {file_path}")
