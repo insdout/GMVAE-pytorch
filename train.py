@@ -301,7 +301,7 @@ if __name__ == "__main__":
     latent_dim = 10     # 64
 
     model, criterion = get_model(k, encoder_type, input_size, hidden_size, latent_dim,
-                                 recon_loss_type="BCE", return_probs=True, eps=1e-8, model_name="GMVAE", loss_name="Loss",
+                                 recon_loss_type="BCE", eps=1e-8, model_name="GMVAE", loss_name="Loss",
                                  encoder_kwargs={"dropout": 0.1}, decoder_kwargs={})
 
     # Set device
