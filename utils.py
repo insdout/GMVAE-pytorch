@@ -59,18 +59,6 @@ def get_model(k, encoder_type, input_size, hidden_size, latent_dim,
         if encoder_type == "FC":
             encoder = EncoderFC(input_size=input_size, hidden_size=hidden_size, **encoder_kwargs)
             decoder = DecoderFC(input_size=input_size, hidden_size=hidden_size, latent_dim=latent_dim, **decoder_kwargs)
-        elif encoder_type == "LSTM":
-            encoder = EncoderLSTM(
-                input_size=input_size,
-                hidden_size=hidden_size,
-                **encoder_kwargs
-                )
-            decoder = DecoderLSTM(
-                input_size=input_size,
-                hidden_size=hidden_size,
-                latent_dim=latent_dim,
-                **decoder_kwargs
-                )
         else:
             raise ValueError(f"Encoder {encoder_type} is not implemented.")
 
